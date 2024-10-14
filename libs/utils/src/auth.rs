@@ -6,7 +6,7 @@ use std::{borrow::Cow, fmt::Display, fs, sync::Arc};
 use anyhow::Result;
 use camino::Utf8Path;
 use jsonwebtoken::{
-    decode, encode, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
+    decode, encode, jwk::JwkSet, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
 };
 use serde::{Deserialize, Serialize};
 
@@ -124,8 +124,19 @@ impl JwtAuth {
             }
             keys
         } else if metadata.is_file() {
-            let public_key = fs::read(key_path)?;
-            vec![DecodingKey::from_ed_pem(&public_key)?]
+            if key_path.extension() == Some("json") {
+                // Load JWK set from JSON file
+                let jwk_data = fs::read_to_string(key_path)?;
+                let jwk_set: JwkSet = serde_json::from_str(&jwk_data)?;
+                jwk_set
+                    .keys
+                    .into_iter()
+                    .map(|jwk| DecodingKey::from_jwk(&jwk))
+                    .collect::<Result<Vec<_>, _>>()?
+            } else {
+                let public_key = fs::read(key_path)?;
+                vec![DecodingKey::from_ed_pem(&public_key)?]
+            }
         } else {
             anyhow::bail!("path is neither a directory or a file")
         };
