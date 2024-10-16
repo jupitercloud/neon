@@ -84,6 +84,13 @@ all: neon postgres neon-pg-ext
 neon: postgres-headers walproposer-lib cargo-target-dir
 	+@echo "Compiling Neon"
 	$(CARGO_CMD_PREFIX) cargo build $(CARGO_BUILD_FLAGS)
+
+# Shortcut for `cargo build` without dependencies
+.PHONY: build
+build:
+	+@echo "Compiling Neon"
+	$(CARGO_CMD_PREFIX) cargo build $(CARGO_BUILD_FLAGS)
+
 .PHONY: cargo-target-dir
 cargo-target-dir:
 	# https://github.com/rust-lang/cargo/issues/14281
