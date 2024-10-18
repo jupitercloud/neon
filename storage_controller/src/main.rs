@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context};
+use camino::Utf8PathBuf;
 use clap::Parser;
 use hyper::Uri;
 use metrics::launch_timestamp::LaunchTimestamp;
@@ -34,9 +35,13 @@ struct Cli {
     #[arg(short, long)]
     listen: std::net::SocketAddr,
 
-    /// Public key for JWT authentication of clients
+    /// Public key string for JWT authentication of clients
     #[arg(long)]
     public_key: Option<String>,
+
+    /// Public key file path for JWT authentication of clients
+    #[arg(long)]
+    public_key_path: Option<Utf8PathBuf>,
 
     /// Token for authenticating this service with the pageservers it controls
     #[arg(long)]
@@ -154,9 +159,14 @@ impl Secrets {
             )
         };
 
-        let public_key = match Self::load_secret(&args.public_key, Self::PUBLIC_KEY_ENV) {
-            Some(v) => Some(JwtAuth::from_key(v).context("Loading public key")?),
-            None => None,
+        let public_key = match &args.public_key_path {
+            Some(path) => {
+                Some(JwtAuth::from_key_path(path).context("Loading public key from path")?)
+            }
+            _ => match Self::load_secret(&args.public_key, Self::PUBLIC_KEY_ENV) {
+                Some(v) => Some(JwtAuth::from_key(v).context("Loading public key")?),
+                None => None,
+            },
         };
 
         let this = Self {
